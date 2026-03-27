@@ -1,6 +1,13 @@
 """
-Code pour les capteurs soient :
-LiDAR -> Acquérir donnée
-Imu -> Acquérir donnée
-Odométry -> Encodeur des roues -> Acquérir donnée
+SENSOR
+Gestion des capteurs.
+
+Rôle :
+- Lire les données du LiDAR (scan)
+- Lire les données IMU (yaw / orientation)
+- (Optionnel) Estimer la position (odometry)
+
+Sorties standard :
+- scan : liste de distances
+- yaw : orientation du robot
 """
