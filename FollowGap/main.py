@@ -9,3 +9,5 @@ Rôle :
 - Exécute le behavior correspondant (behaviors.py)
 - Envoie la commande aux moteurs (actuation.py)
 """
+import numpy as np
+from tool import theta_goal, trans_theta
