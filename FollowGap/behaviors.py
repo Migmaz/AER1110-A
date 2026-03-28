@@ -14,6 +14,8 @@ Contient :
 Entrées : scan, yaw
 Sorties : cmd_vel = {"linear": x, "angular": y}
 """
+# Ludo : À modifier les schémas de fonctions car peu clair et pas adapter
+
 
 def navigate(scan, yaw, k=0.4):
     """
