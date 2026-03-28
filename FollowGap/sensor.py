@@ -11,6 +11,17 @@ Sorties standard :
 - scan : liste de distances
 - yaw : orientation du robot
 """
+import numpy as np
+import busio
+import adafruit_bno08x
+from adafruit_bno08x.i2c import BNO08X_I2C
+from adafruit_bno08x import (
+BNO_REPORT_LINEAR_ACCELERATION,
+BNO_REPORT_GAME_ROTATION_VECTOR,
+
+)
+
+
 
 def get_lidar_scan():
     """
@@ -26,15 +37,23 @@ def get_lidar_scan():
     pass
 
 
-def get_yaw():
-    """
-    Retourne l'orientation du robot.
+def imu() -> tuple[np.ndarray,float]:
+    """Récupère les données du capteur inertielle (IMU)
 
     Returns:
-        yaw (float):
-            Angle en radians.
-            0 = direction initiale du robot.
-            Positif = rotation gauche (CCW)
-            Négatif = rotation droite (CW)
+        tuple[np.ndarray,float]: Un tuple contenant :
+            - accélération (np.ndarray): Matrice (3,1) d'accélération en m/s²
+            - yaw (float): Yaw du prototype en rad
     """
-    pass
+    # voir : https://cdn-learn.adafruit.com/downloads/pdf/adafruit-9-dof-orientation-imu-fusion-breakout-bno085.pdf
+    i2c = busio.I2C()
+    bno = BNO08X_I2C(i2c)
+    bno.enable_feature(BNO_REPORT_GAME_ROTATION_VECTOR)
+    bno.enable_feature(BNO_REPORT_LINEAR_ACCELERATION)
+    
+    ax, ay, az = bno.linear_acceleration
+    qi, qj, qk, qr = bno.quaternion
+    
+    yaw = np.atan2(2 * (qr * qk + qi * qj, 1 - 2 * (qj**2 + qk**2)))
+    a = np.array([[ax],[ay],[az]])
+    return a, yaw

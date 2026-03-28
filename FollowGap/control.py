@@ -16,6 +16,9 @@ Entrées : données capteurs
 Sortie : nom du behavior à exécuter
 """
 
+# Ludo : À modifier les schémas de fonctions car peu clair et pas adapter
+
+
 def update_state(scan, yaw, current_state):
     """
     Met à jour l'état du robot (FSM).

@@ -13,6 +13,9 @@ Sortie :
 - signaux moteurs
 """
 
+# Ludo : À modifier les schémas de fonctions car peu clair et pas adapter
+
+
 def send_command(cmd_vel):
     """
     Envoie une commande aux moteurs.
