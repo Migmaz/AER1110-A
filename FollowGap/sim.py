@@ -61,13 +61,15 @@ def generate_multi_gap_lidar_xyz(
 
 if __name__ == "__main__":
     from tool import trans_lidar
-    from follow_gap import preprocess_lidar, safety_buble, find_best_gap, apply_obstacle_threshold
+    from follow_gap import preprocess_lidar, safety_buble, find_best_gap, obstacle_threshold, find_best_point
     
     pts, theta, range = generate_multi_gap_lidar_xyz()
     scan = trans_lidar(pts)
     scan_filter = preprocess_lidar(scan)
-    scan_filter = apply_obstacle_threshold(scan_filter)
+    scan_filter = obstacle_threshold(scan_filter)
     scan_proc = safety_buble(scan_filter)
     best_gap = find_best_gap(scan_proc,0)
-    print(best_gap)
-    
+    start_i, end_i = best_gap
+    best_point = find_best_point(start_i, end_i, scan_proc)
+    print(best_point)
+    print(scan_proc[best_point])

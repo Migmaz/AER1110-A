@@ -62,8 +62,25 @@ def find_best_gap(scan_filter:np.ndarray, theta_goal:float, weight_goal=0.7) -> 
     
 
 def find_best_point(start_i:int, end_i:int, scan_filter:np.ndarray, conv_size = 80) -> int:
-        averaged_max_gap = np.convolve(scan_filter[start_i:end_i], np.ones(conv_size),'same') /conv_size
-        return averaged_max_gap.argmax() + start_i
+    """
+    Identifie le point optimal à l'intérieur d'un gap LiDAR donné en utilisant une moyenne mobile.
+
+    Cette fonction cherche le point correspondant à la plus grande distance 
+    à l'intérieur du gap, en lissant les distances avec une fenêtre de convolution
+    pour éviter les variations locales trop brusques.
+
+    Args:
+        start_i (int): Index du début du gap.
+        end_i (int): Index de fin du gap.
+        scan_filter (np.ndarray): Scan LiDAR prétraité avec les obstacles Nx2 [distance, angle]
+        conv_size (int, optional): Taille de la fenêtre de convolution pour lisser
+                                   les distances avant de choisir le point optimal. Defaults to 80.
+
+    Returns:
+        int: Index du point optimal à l'intérieur du gap.
+    """
+    averaged_max_gap = np.convolve(scan_filter[start_i:end_i,0], np.ones(conv_size),'same') /conv_size
+    return averaged_max_gap.argmax() + start_i
     
 def preprocess_lidar(
     scan:np.ndarray,
@@ -112,7 +129,19 @@ def preprocess_lidar(
     return processed_scan
 
 def safety_buble(processed_scan:np.ndarray, bubble_radius=16) -> np.ndarray:
-    
+    """
+    Applique une bulle de sécurité autour de l'obstacle le plus proche dans un scan LiDAR.
+
+    Tous les points dans un rayon d'indices défini autour de l'obstacle le plus proche 
+    sont mis à zéro pour indiquer une zone non navigable.
+
+    Args:
+        processed_scan (np.ndarray): Scan LiDAR avec le traitement d'obstacle Nx2 [distance, angle]
+        bubble_radius (int, optional): Rayon (en nombre d'indices) autour du point le plus proche à bloqué. Defaults to 16.
+
+    Returns:
+        np.ndarray: Scan du LiDAR filtrée avec la bulle de sécurité appliqué
+    """
     processed_scan = processed_scan.copy()
     closest = np.argmin(processed_scan[:,0])
     
@@ -128,7 +157,19 @@ def safety_buble(processed_scan:np.ndarray, bubble_radius=16) -> np.ndarray:
     
     return processed_scan
 
-def apply_obstacle_threshold(scan: np.ndarray, threshold=2.0) -> np.ndarray:
-    scan = scan.copy()
-    scan[scan[:, 0] < threshold, 0] = 0
-    return scan
+def obstacle_threshold(processed_scan: np.ndarray, threshold=2.0) -> np.ndarray:
+    """
+    Filtre les points du scan LiDAR en appliquant un seuil minimal de distance.
+
+    Tous les points avec une distance inférieure à `threshold` sont considérés comme des obstacles ou invalides.
+
+    Args:
+        scan (np.ndarray): Scan LiDAR prétraité Nx2 [distance, angle]
+        threshold (float, optional): Distance minimale valide. Defaults to 2.0.
+
+    Returns:
+        np.ndarray: Scan prétraité avec les obstacles Nx2 [distance, angle]
+    """
+    processed_scan = processed_scan.copy()
+    processed_scan[processed_scan[:, 0] < threshold, 0] = 0
+    return processed_scan
