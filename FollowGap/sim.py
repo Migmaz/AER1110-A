@@ -1,18 +1,8 @@
 """
 SIMULATION
 Tests sans robot réel.
-
-Rôle :
-- Générer de faux scans LiDAR
-- Tester les behaviors et la navigation
-- Permettre le debug rapide
-
-Très utile pour :
-- développer sans hardware
-- valider les algorithmes
 """
 import numpy as np
-import os
 import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation
 
@@ -209,7 +199,7 @@ def animate_simulation(fg):
 
     anim = FuncAnimation(fig, update, frames=frame_gen, interval=50, blit=True)
 
-    anim.save("simulation_multi_goal.gif", writer="pillow", fps=10)
+    anim.save("Media/simulation_multi_goal.gif", writer="pillow", fps=10)
 
     plt.show()
 
@@ -218,7 +208,7 @@ def animate_simulation(fg):
 # RUN
 # ===============================
 if __name__ == "__main__":
-    from follow_gap import FollowGap
+    from FTG import FollowGap
 
     fg = FollowGap()
 
