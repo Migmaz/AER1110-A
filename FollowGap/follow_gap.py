@@ -141,7 +141,10 @@ class FollowGap:
 
         # moyenne distance vectorisée
         cumsum = np.cumsum(distances)
-        sums = cumsum[stops - 1] - np.concatenate(([0], cumsum[starts[:-1] - 1]))
+        sums = sums = np.array([
+                                cumsum[stops[i] - 1] - (cumsum[starts[i] - 1] if starts[i] > 0 else 0)
+                                for i in range(len(starts))
+                                ])
         means = sums / (lengths + 1e-6)
         means_norm = means / (np.max(means) + 1e-6)
 
@@ -238,6 +241,6 @@ class FollowGap:
         )
 
         # limitation angle
-        theta_final = np.clip(theta_final, -np.pi/2, np.pi/2)
+        theta_final = np.clip(theta_final, -np.pi, np.pi)
 
         return best_i, theta_final, scan
