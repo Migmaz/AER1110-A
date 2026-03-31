@@ -61,6 +61,13 @@ def generate_multi_gap_lidar_xyz(
 
     return points, angles, ranges
 
+import numpy as np
+import matplotlib.pyplot as plt
+from matplotlib.animation import FuncAnimation
+
+# ===============================
+# LiDAR simulation
+# ===============================
 def simulate_lidar(position, obstacles, n_rays=360, max_range=10.0):
     angles = np.linspace(-np.pi, np.pi, n_rays)
     distances = np.full(n_rays, max_range)
@@ -82,162 +89,137 @@ def simulate_lidar(position, obstacles, n_rays=360, max_range=10.0):
 
     return np.column_stack((distances, angles))
 
-# =================================
-# Mini Benchmark / Simulation + complète
-# =================================
 
+# ===============================
+# ENVIRONNEMENT
+# ===============================
 obstacles = [
     {"center": np.array([4, 0]), "radius": 1},
     {"center": np.array([0, 5]), "radius": 1},
     {"center": np.array([0, -3]), "radius": 1},
-     {"center": np.array([4, 4]), "radius": 0.5},
+    {"center": np.array([4, 4]), "radius": 0.5},
+    {"center": np.array([8, -3]), "radius": 0.5},
 ]
 
-goal = np.array([6, 6])
+# 🔥 3 GOALS
+goals = [
+    np.array([6, 6]),
+    np.array([2, 7]),
+    np.array([2,-4]),
+    np.array([8,0])
+]
 
-if __name__ == "__main__":
-    from tool import trans_lidar
-    from follow_gap import FollowGap
+
+# ===============================
+# ANIMATION MULTI-GOALS
+# ===============================
+def animate_simulation(fg):
+    fig, ax = plt.subplots(figsize=(6,6))
+
+    pos = np.array([0.0, 0.0])
+    heading = 0.0
+    traj = [pos.copy()]
+
+    done = False
+    anim = None
+
+    current_goal_idx = 0
+
+    traj_line, = ax.plot([], [], '-b', label="Trajectory")
+    robot_point = ax.scatter([], [], c='blue', s=50)
+
+    # obstacles
+    for obs in obstacles:
+        circle = plt.Circle(obs["center"], obs["radius"], color='r', alpha=0.5)
+        ax.add_patch(circle)
+        
+    ax.scatter(-100, -100, c='r', label="Obstacle")
     
-    pts, theta, blblbl = generate_multi_gap_lidar_xyz()
-    scan = trans_lidar(pts)
-    
-    fg = FollowGap()
-    
-    idx,angle,debug_scan = fg.compute(scan,np.pi/2)
-    print(idx)
-    print(debug_scan[idx], angle)
-    
-    def run_simulation():
-        pos = np.array([0.0, 0.0])
-        heading = 0.0
+    # Afficher tous les goals
+    for g in goals:
+        ax.scatter(g[0], g[1], c='g', s=100)
+    ax.scatter(-100, -100, c='g', s=100, label="Goal")
+    ax.set_xlim(-2, 10)
+    ax.set_ylim(-5, 10)
+    ax.set_aspect('equal')
+    ax.grid()
+    ax.legend()
 
-        trajectory = [pos.copy()]
-        scans = []
+    def update(frame):
+        nonlocal pos, heading, traj, anim, done, current_goal_idx
 
-        for _ in range(100):
-            scan = simulate_lidar(pos, obstacles)
+        if done:
+            raise StopIteration
 
-            # repère robot
-            scan[:, 1] -= heading
-            scan[:, 1] = (scan[:, 1] + np.pi) % (2*np.pi) - np.pi
+        # goal actuel
+        goal = goals[current_goal_idx]
 
-            theta_goal = np.arctan2(goal[1] - pos[1], goal[0] - pos[0])
-            theta_goal -= heading
-            theta_goal = (theta_goal + np.pi) % (2*np.pi) - np.pi
+        # --- TON CODE ---
+        scan = simulate_lidar(pos, obstacles)
 
-            idx, theta_target, debug_scan = fg.compute(scan, theta_goal)
+        scan[:,1] -= heading
+        scan[:,1] = (scan[:,1] + np.pi) % (2*np.pi) - np.pi
 
-            if theta_target is None:
-                break
+        theta_goal = np.arctan2(goal[1] - pos[1], goal[0] - pos[0])
+        theta_goal -= heading
+        theta_goal = (theta_goal + np.pi) % (2*np.pi) - np.pi
 
-            # dynamique
-            max_turn_rate = 0.3
-            angle_diff = (theta_target + np.pi) % (2*np.pi) - np.pi
-            angle_diff = np.clip(angle_diff, -max_turn_rate, max_turn_rate)
+        idx, theta_target, debug_scan = fg.compute(scan, theta_goal)
 
-            heading += angle_diff
+        if theta_target is None:
+            done = True
+            anim.event_source.stop()
+            raise StopIteration
 
-            step_size = 0.2
-            pos += step_size * np.array([np.cos(heading), np.sin(heading)])
+        max_turn_rate = 0.3
+        angle_diff = (theta_target + np.pi) % (2*np.pi) - np.pi
+        angle_diff = np.clip(angle_diff, -max_turn_rate, max_turn_rate)
 
-            trajectory.append(pos.copy())
-            scans.append(scan.copy())
+        heading += angle_diff
 
-            if np.linalg.norm(pos - goal) < 0.1:
-                print("Goal reached!")
-                break
+        step_size = 0.2
+        pos += step_size * np.array([np.cos(heading), np.sin(heading)])
 
-        return np.array(trajectory), scans
+        traj.append(pos.copy())
 
-    def animate_simulation(obstacles, goal):
-        fig, ax = plt.subplots(figsize=(6,6))
+        # update plot
+        traj_np = np.array(traj)
+        traj_line.set_data(traj_np[:,0], traj_np[:,1])
+        robot_point.set_offsets(pos)
 
-        pos = np.array([0.0, 0.0])
-        heading = 0.0
+        # 🔥 gestion multi-goals
+        if np.linalg.norm(pos - goal) < 0.2:
+            print(f"Goal {current_goal_idx+1} reached!")
 
-        traj = [pos.copy()]
+            current_goal_idx += 1
 
-        # éléments graphiques
-        traj_line, = ax.plot([], [], '-b', label="Trajectory")
-        robot_point = ax.scatter([], [], c='blue', s=50)
-        lidar_points = ax.scatter([], [], s=2, alpha=0.2)
-
-        # obstacles
-        for obs in obstacles:
-            circle = plt.Circle(obs["center"], obs["radius"], color='r', alpha=0.5)
-            ax.add_patch(circle)
-
-        # goal
-        ax.scatter(goal[0], goal[1], c='g', s=100, label="Goal")
-
-        ax.set_xlim(-2, 8)
-        ax.set_ylim(-5, 8)
-        ax.set_aspect('equal')
-        ax.grid()
-        ax.legend()
-
-        def update(frame):
-            nonlocal pos, heading, traj
-
-            # 🔹 LiDAR
-            scan = simulate_lidar(pos, obstacles)
-
-            # repère robot
-            scan[:,1] -= heading
-            scan[:,1] = (scan[:,1] + np.pi) % (2*np.pi) - np.pi
-
-            # angle goal
-            theta_goal = np.arctan2(goal[1] - pos[1], goal[0] - pos[0])
-            theta_goal -= heading
-            theta_goal = (theta_goal + np.pi) % (2*np.pi) - np.pi
-
-            # Follow Gap
-            idx, theta_target, debug_scan = fg.compute(scan, theta_goal)
-
-            if theta_target is None:
-                return traj_line, robot_point, lidar_points
-
-            # dynamique
-            max_turn_rate = 0.3
-            angle_diff = (theta_target + np.pi) % (2*np.pi) - np.pi
-            angle_diff = np.clip(angle_diff, -max_turn_rate, max_turn_rate)
-
-            heading += angle_diff
-
-            # mouvement
-            step_size = 0.2
-            pos += step_size * np.array([np.cos(heading), np.sin(heading)])
-
-            traj.append(pos.copy())
-            
-            if np.linalg.norm(pos - goal) < 0.1:
-                print("Goal reached!")
-                print(frame)
-                anim.save("simulation(1).gif", writer="pillow", fps=10)
+            # tous les goals atteints
+            if current_goal_idx >= len(goals):
+                print("All goals reached!")
+                ax.set_title("All goals reached!")
+                done = True
                 anim.event_source.stop()
+                raise StopIteration
 
-            # 🔹 update traj
-            traj_np = np.array(traj)
-            traj_line.set_data(traj_np[:,0], traj_np[:,1])
+        return traj_line, robot_point
 
-            # 🔹 robot
-            robot_point.set_offsets(pos)
+    def frame_gen():
+        while True:
+            yield 0
 
-            # 🔹 LiDAR points (dans monde)
-            x = pos[0] + scan[:,0] * np.cos(scan[:,1] + heading)
-            y = pos[1] + scan[:,0] * np.sin(scan[:,1] + heading)
-            lidar_points.set_offsets(np.c_[x,y])
+    anim = FuncAnimation(fig, update, frames=frame_gen, interval=50, blit=True)
 
-            return traj_line, robot_point, lidar_points
+    anim.save("simulation_multi_goal.gif", writer="pillow", fps=10)
 
-        anim = FuncAnimation(fig, update, frames=150, interval=50, blit=True)
+    plt.show()
 
-        plt.show()
 
-        return anim
-    
-    animate_simulation(obstacles, goal)
-    
-    anim = animate_simulation(obstacles, goal)
-    anim.save("simulation.gif", writer="pillow", fps=10)
+# ===============================
+# RUN
+# ===============================
+if __name__ == "__main__":
+    from follow_gap import FollowGap
+
+    fg = FollowGap()
+
+    animate_simulation(fg)
