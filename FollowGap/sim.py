@@ -98,14 +98,20 @@ obstacles = [
     {"center": np.array([0, 5]), "radius": 1},
     {"center": np.array([0, -3]), "radius": 1},
     {"center": np.array([4, 4]), "radius": 0.5},
-    {"center": np.array([2, -2]), "radius": 1},
+    {"center": np.array([8, -3]), "radius": 0.5},
 ]
 
-goal = np.array([10, -2])
+# 🔥 3 GOALS
+goals = [
+    np.array([6, 6]),
+    np.array([2, 7]),
+    np.array([2,-4]),
+    np.array([8,0])
+]
 
 
 # ===============================
-# ANIMATION (FIX GIF STOP)
+# ANIMATION MULTI-GOALS
 # ===============================
 def animate_simulation(fg):
     fig, ax = plt.subplots(figsize=(6,6))
@@ -117,6 +123,8 @@ def animate_simulation(fg):
     done = False
     anim = None
 
+    current_goal_idx = 0
+
     traj_line, = ax.plot([], [], '-b', label="Trajectory")
     robot_point = ax.scatter([], [], c='blue', s=50)
 
@@ -124,23 +132,29 @@ def animate_simulation(fg):
     for obs in obstacles:
         circle = plt.Circle(obs["center"], obs["radius"], color='r', alpha=0.5)
         ax.add_patch(circle)
-
-    # goal
-    ax.scatter(goal[0], goal[1], c='g', s=100, label="Goal")
-
-    ax.set_xlim(-2, 12)
-    ax.set_ylim(-5, 12)
+        
+    ax.scatter(-100, -100, c='r', label="Obstacle")
+    
+    # Afficher tous les goals
+    for g in goals:
+        ax.scatter(g[0], g[1], c='g', s=100)
+    ax.scatter(-100, -100, c='g', s=100, label="Goal")
+    ax.set_xlim(-2, 10)
+    ax.set_ylim(-5, 10)
     ax.set_aspect('equal')
     ax.grid()
     ax.legend()
 
     def update(frame):
-        nonlocal pos, heading, traj, anim, done
+        nonlocal pos, heading, traj, anim, done, current_goal_idx
 
         if done:
-            raise StopIteration  # 🔥 STOP GIF propre
+            raise StopIteration
 
-        # --- TON CODE (inchangé) ---
+        # goal actuel
+        goal = goals[current_goal_idx]
+
+        # --- TON CODE ---
         scan = simulate_lidar(pos, obstacles)
 
         scan[:,1] -= heading
@@ -173,25 +187,29 @@ def animate_simulation(fg):
         traj_line.set_data(traj_np[:,0], traj_np[:,1])
         robot_point.set_offsets(pos)
 
-        # 🔹 STOP AU GOAL
-        if np.linalg.norm(pos - goal) < 0.1:
-            print("Goal reached!")
-            ax.set_title("Goal reached!")
-            done = True
-            anim.event_source.stop()
-            raise StopIteration
+        # 🔥 gestion multi-goals
+        if np.linalg.norm(pos - goal) < 0.2:
+            print(f"Goal {current_goal_idx+1} reached!")
+
+            current_goal_idx += 1
+
+            # tous les goals atteints
+            if current_goal_idx >= len(goals):
+                print("All goals reached!")
+                ax.set_title("All goals reached!")
+                done = True
+                anim.event_source.stop()
+                raise StopIteration
 
         return traj_line, robot_point
 
-    # 🔥 générateur infini MAIS stoppé proprement
     def frame_gen():
         while True:
             yield 0
 
     anim = FuncAnimation(fig, update, frames=frame_gen, interval=50, blit=True)
 
-    # 🔹 sauvegarde GIF
-    anim.save("simulation.gif", writer="pillow", fps=10)
+    anim.save("simulation_multi_goal.gif", writer="pillow", fps=10)
 
     plt.show()
 
