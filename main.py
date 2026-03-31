@@ -20,7 +20,7 @@ import numpy as np
 # Importation de fonctions
 # =================================================
 
-from FollowGap.follow_gap import FollowGap
+from FollowGap.FTG import FollowGap
 
 # =================================================
 # Code
