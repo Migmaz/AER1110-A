@@ -1,3 +1,4 @@
+
 """
 BEHAVIORS
 Comportements du robot.
@@ -16,7 +17,8 @@ Sorties : cmd_vel = {"linear": x, "angular": y}
 """
 # Ludo : À modifier les schémas de fonctions car peu clair et pas adapter
 
-
+from FTG import FollowGap #Ramène la classe FollowGap
+import motor
 def navigate(scan, yaw, k=0.4):
     """
     Comportement principal : navigation vers la cible avec évitement.
@@ -65,3 +67,23 @@ def escape():
             Commande pour tourner ou reculer.
     """
     return {"linear": 0.0, "angular": 0.8}
+
+def emergency_stop():
+
+    fg = FollowGap()
+    
+    scan_processed = fg.preprocess_lidar(scan)
+
+    distances = scan_processed[:, 0]
+    
+    for i in range (len(distances)):
+
+        if distances[i] < fg.bubble_radius:
+
+            motor.arret = True
+
+            return
+
+    return
+
+            
