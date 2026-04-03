@@ -35,40 +35,6 @@ def theta_goal(Pr:list[float], Pg:list[float],yaw:float) -> float:
     
     return theta_goal
 
-def trans_lidar(scan: np.ndarray, theta_lidar=0.0, translation: tuple[float,float,float] =(0,0,0)) -> np.ndarray:
-    """
-    Transforme un scan LiDAR brut vers le plan du rover.
-
-    Args:
-        scan (np.ndarray): Scan du LiDAR [x, y, z], shape Nx3
-        theta_lidar (float, optional): Angle d'inclinaison du LiDAR (rad). Defaults to 0.0.
-        translation (tuple, optional): Position du LiDAR dans le rover (tx, ty, tz). Defaults to (0,0,0).
-
-    Returns:
-        np.ndarray: Scan formaté [distance, theta], shape Nx2
-    """
-    tx, ty, tz = translation
-
-    # Rotation autour de l'axe X (inclinée)
-    R = np.array([
-        [1, 0, 0],
-        [0, np.cos(theta_lidar), -np.sin(theta_lidar)],
-        [0, np.sin(theta_lidar),  np.cos(theta_lidar)]
-    ])
-    t = np.array([tx, ty, tz])
-
-    pts_rover = (R @ scan.T).T + t
-
-    x_r = pts_rover[:,0]
-    y_r = pts_rover[:,1]
-
-    distances = np.sqrt(x_r**2 + y_r**2)
-    theta = np.arctan2(y_r, x_r)
-
-    scan_proc = np.stack([distances, theta], axis=1)
-    return scan_proc
-
-
 def trans_to_rover(scan: np.ndarray, pitch: float, translation: tuple[float,float,float] =(0,0,0)) -> np.ndarray :
     """
     Transforme un scan LiDAR [r, theta] en points 3D dans le repère du rover
