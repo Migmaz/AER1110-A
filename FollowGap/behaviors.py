@@ -43,8 +43,9 @@ def navigate(scan, yaw, k=0.4):
 
      # 1. Vérifier danger en priorité
     cmd = emergency_stop(scan)
+
     if cmd is not None:
-        return cmd
+        return cmd 
 
     # 2. Sinon comportement normal
     fg = FollowGap()
@@ -61,19 +62,41 @@ def navigate(scan, yaw, k=0.4):
 
 def circle_object(scan, desired_distance=1.0):
     """
-    Fait tourner le robot autour d'un objet.
-
+    Fait tourner le robot autour d'un objet à distance constante.
+    
     Args:
-        scan (list of float):
-            Données LiDAR.
-        desired_distance (float):
-            Distance cible à maintenir (m).
-
+        scan (np.ndarray Nx2): Scan LiDAR [distance, angle]
+        desired_distance (float): Distance cible à maintenir (m)
+    
     Returns:
-        cmd_vel (dict):
-            Commande moteur pour mouvement circulaire.
+        cmd_vel (dict): Commande moteur {"linear": ..., "angular": ...}
     """
-    pass
+    
+    distances = scan[:, 0]
+    angles = scan[:, 1]
+
+    # Distance minimale et angle correspondant
+    min_dist_idx = np.argmin(distances)
+    min_dist = distances[min_dist_idx]
+    theta_obj = angles[min_dist_idx]
+
+    # Gains simples pour contrôler vitesse
+    K_linear = 0.3
+    K_angular = 0.5
+
+    # Correction linéaire pour garder distance désirée
+    linear = K_linear * (min_dist - desired_distance)
+
+    # Correction angulaire pour tourner autour
+    # Si l'objet est à gauche → tourner dans le sens horaire, etc.
+    # On peut juste tourner autour avec une valeur fixe
+    angular = K_angular * np.sign(theta_obj)  # positive = tourner gauche, negative = droite
+
+    # Limiter vitesses
+    linear = np.clip(linear, -0.3, 0.3) #la vitesse linéaire (avance/recul) est forcée à rester entre -0.3 m/s (recule) et +0.3 m/s (avance).
+    angular = np.clip(angular, -0.5, 0.5) #la vitesse angulaire (rotation) est limitée entre -0.5 rad/s et +0.5 rad/s (rotation horaire ou antihoraire).
+
+    return {"linear": linear, "angular": angular}
 
 
 def escape(scan, theta):
