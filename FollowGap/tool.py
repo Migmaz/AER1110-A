@@ -84,9 +84,9 @@ def filter_ground(pts_rot: np.ndarray, z_min=0.05) -> np.ndarray:
     """
     return pts_rot[pts_rot[:,2] > z_min]
 
-def compute_scan(pts_rot: np.ndarray, z_min = 0.05, z_max = 0.5) ->  np.ndarray:
+def compute_scan(pts_rot: np.ndarray, z_min = 0.05, z_max = 0.5) ->  tuple[np.ndarray,np.ndarray]:
     """
-    Génère un scan 2D pondéré à partir des points 3D
+    Génère un scan 2D réel et pondéré à partir des points 3D
     
     Étapes :
     1. Projection sur le plan XY
@@ -99,7 +99,10 @@ def compute_scan(pts_rot: np.ndarray, z_min = 0.05, z_max = 0.5) ->  np.ndarray:
         z_max (float, optional): Hauteur maximal (normalisation du poids). Defaults to 0.5.
 
     Returns:
-        np.ndarray: Scan 2D pondéré [distance, angle] Nx2
+            tuple:
+                - np.ndarray: Scan 2D réel [distance, angle] Nx2
+                - np.ndarray: Scan 2D pondéré [distance, angle] Nx2
+        
     """
     x = pts_rot[:,0]
     y = pts_rot[:,1]
@@ -112,4 +115,4 @@ def compute_scan(pts_rot: np.ndarray, z_min = 0.05, z_max = 0.5) ->  np.ndarray:
     
     dist_weight = dist * weight
     
-    return np.column_stack(dist_weight, theta)
+    return np.column_stack(dist, theta), np.column_stack(dist_weight, theta)
