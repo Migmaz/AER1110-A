@@ -120,7 +120,6 @@ def escape(scan, theta):
     # 2. Pas de direction → tourner doucement
     if theta is None:
         return {"linear": 0.0, "angular": 0.5}
-
     # 3. Direction valide → tourner vers ouverture
     return {"linear": 0.0, "angular": theta}
     
@@ -157,4 +156,4 @@ def emergency_stop(scan, distance_critique=0.15):
 
     return None
 
-            
+            #Si tu vois ce code alors tut marche
