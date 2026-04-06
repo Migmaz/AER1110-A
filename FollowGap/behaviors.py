@@ -21,7 +21,7 @@ from FTG import FollowGap #Ramène la classe FollowGap
 
 import numpy as np
 
-def navigate(scan, yaw, k=0.4):
+def navigate(theta_goal):
     """
     Comportement principal : navigation vers la cible avec évitement.
 
@@ -41,26 +41,48 @@ def navigate(scan, yaw, k=0.4):
             }
     """
 
-     # 1. Vérifier danger en priorité
-    cmd = emergency_stop(scan)
-
-    if cmd is not None:
-        return cmd 
-
-    # 2. Sinon comportement normal
-    fg = FollowGap()
-    best_i, theta, scan_processed = fg.compute(scan, yaw)
-
-    if best_i is None or theta is None:
-        return escape(scan, theta)
-
     return {
         "linear": 0.5,
-        "angular": theta
+        "angular": theta_goal
     }
 
 
-def circle_object(scan, desired_distance=1.0):
+def stop():
+    """
+    Détecte une situation dangereuse à partir du scan LiDAR.
+
+    Args:
+        scan (np.ndarray): Scan LiDAR Nx2 [distance, angle]
+        distance_critique (float): distance minimale sécuritaire (m)
+
+    Returns:
+        dict ou None:
+            {"linear": 0.0, "angular": 0.0} si danger
+            None sinon
+    """
+    return {"linear": 0.0, "angular": 0.0}
+
+
+def escape(prev_state):
+    """
+    Comportement d'urgence si le robot est bloqué.
+
+    Returns:
+        cmd_vel (dict):
+            Commande pour tourner ou reculer.
+    """
+
+    # 1. Trop proche → reculer
+    if prev_state == "STOP":
+
+        return {"linear": -0.2, "angular": 0.3}
+
+    # 2. CUL-DE-SAC → tourner doucement
+    if prev_state == "CUL-DE-SAC":
+        return {"linear": 0.0, "angular": 0.5}
+    
+
+def scan(scan_eff, desired_distance=1.0):
     """
     Fait tourner le robot autour d'un objet à distance constante.
     
@@ -72,8 +94,8 @@ def circle_object(scan, desired_distance=1.0):
         cmd_vel (dict): Commande moteur {"linear": ..., "angular": ...}
     """
     
-    distances = scan[:, 0]
-    angles = scan[:, 1]
+    distances = scan_eff[:, 0]
+    angles = scan_eff[:, 1]
 
     # Distance minimale et angle correspondant
     min_dist_idx = np.argmin(distances)
@@ -99,61 +121,6 @@ def circle_object(scan, desired_distance=1.0):
     return {"linear": linear, "angular": angular}
 
 
-def escape(scan, theta):
-    """
-    Comportement d'urgence si le robot est bloqué.
+def retour_base(path):
 
-    Returns:
-        cmd_vel (dict):
-            Commande pour tourner ou reculer.
-    """
-    fg = FollowGap()
-    scan_processed = fg.preprocess_lidar(scan)
-
-    distances = scan_processed[:, 0]
-    min_dist = np.min(distances)
-
-    # 1. Trop proche → reculer
-    if min_dist < 0.35:
-        return {"linear": -0.2, "angular": 0.3}
-
-    # 2. Pas de direction → tourner doucement
-    if theta is None:
-        return {"linear": 0.0, "angular": 0.5}
-    # 3. Direction valide → tourner vers ouverture
-    return {"linear": 0.0, "angular": theta}
-    
-def emergency_stop(scan, distance_critique=0.15):
-    """
-    Détecte une situation dangereuse à partir du scan LiDAR.
-
-    Args:
-        scan (np.ndarray): Scan LiDAR Nx2 [distance, angle]
-        distance_critique (float): distance minimale sécuritaire (m)
-
-    Returns:
-        dict ou None:
-            {"linear": 0.0, "angular": 0.0} si danger
-            None sinon
-    """
-
-    fg = FollowGap()
-    scan_processed = fg.preprocess_lidar(scan)
-
-    distances = scan_processed[:, 0]
-
-    # Détection du danger
-    danger = False
-
-    for d in distances:
-        if d < distance_critique:
-            danger = True
-            break
-
-    # Action
-    if danger:
-        return {"linear": 0.0, "angular": 0.0}
-
-    return None
-
-            #Si tu vois ce code alors tut marche
+    return {"linear": 0.0, "angular": path[:, 1]}

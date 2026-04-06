@@ -17,63 +17,68 @@ Sortie : nom du behavior à exécuter
 """
 
 # Ludo : À modifier les schémas de fonctions car peu clair et pas adapter
-from behaviors import emergency_stop
-
-from behaviors import circle_object
-
-from behaviors import navigate
-
-from mapping import update_position
-
-from mapping import save_path
 
 import numpy as np
 
-def update_state(scan, yaw, robot_pos, current_state, goal_pos, path):
-    """
-    Met à jour l'état du robot (FSM) et gère le chemin.
+theta_history = []
+prev_dist_to_goal = None
+stuck_counter = 0
 
-    Args:
-        scan (list or np.ndarray): données LiDAR
-        yaw (float): orientation actuelle
-        robot_pos (tuple): position actuelle (x, y)
-        current_state (str): état actuel
-        goal_pos (tuple): position du goal (x, y)
-        path (list): trajectoire déjà enregistrée
+def update_state(scan_true, theta_goal, prev_state, robot_pos, goal_pos):
 
-    Returns:
-        dict: {
-            "cmd": dict ou None,         # commande moteur
-            "new_state": str,            # nouvel état
-        }
-    """
+    global theta_history, prev_dist_to_goal, stuck_counter
 
-    # 🔹 Situation d'urgence
-    if emergency_stop(scan) is not None:
-        return {"cmd": {"linear": 0.0, "angular": 0.0},
-                "new_state": "EMERGENCY_STOP",}
+    distances = scan_true[:, 0]
 
-    # 🔹 Robot atteint le goal
-    distance_to_goal = np.linalg.norm(np.array(goal_pos) - np.array(robot_pos))
-    if distance_to_goal < 1 and current_state != "SCAN":
-        path = save_path(path, *robot_pos)
-        return {"cmd": None, "new_state": "SCAN", "path": path}
 
-    # 🔹 Comportement dans l'état SCAN
-    if current_state == "SCAN":
-        cmd_vel = circle_object(scan, desired_distance=1.0)
-        # Quand le scan est terminé, on peut retourner à NAVIGATE ou RETURN
-        return {"cmd": cmd_vel, "new_state": "RETURN", "path": path}
+    # État STOP
+    if np.min(distances) <= 0.15:
+        return "STOP"
 
-    # 🔹 Comportement selon l'état actuel
-    if current_state == "ESCAPE":
-        cmd_vel = navigate(scan, yaw)
-        return {"cmd": cmd_vel, "new_state": "NAVIGATE"}
+    # --- État CUL-DE-SAC ---
+    dist_to_goal = np.linalg.norm(np.array(goal_pos) - np.array(robot_pos))
 
-    elif current_state == "RETURN":
-        cmd_vel = navigate(scan, yaw)
-        return {"cmd": cmd_vel, "new_state": "RETURN"}
+    if prev_dist_to_goal is None:
+        prev_dist_to_goal = dist_to_goal
 
-    else:  # NAVIGATE
-        cmd_vel = navigate(scan, yaw)
-        return {"cmd": cmd_vel, "new_state": "NAVIGATE"}
+    progress = prev_dist_to_goal - dist_to_goal
+    prev_dist_to_goal = dist_to_goal
+
+    if theta_goal is not None:
+        theta_history.append(theta_goal)
+
+    if len(theta_history) > 10:
+        theta_history.pop(0)
+
+    theta_var = np.var(theta_history) if len(theta_history) > 1 else 0
+
+    free_ratio = np.sum(distances > 1.0) / len(distances)
+
+    if (
+        progress < 0.01
+        and theta_var > 0.3
+        and free_ratio < 0.3
+    ):
+        stuck_counter += 1
+    else:
+        stuck_counter = 0
+
+    if stuck_counter > 5:
+        return "CUL-DE-SAC"
+    
+
+    # État ESCAPE
+    if prev_state == "CUL-DE-SAC" or prev_state == "STOP":
+        return "ESCAPE"
+
+
+    # État SCAN
+    if dist_to_goal <= 1:
+        return "SCAN"
+
+    # État RETOUR_BASE
+    if prev_state == "SCAN":
+
+        return "RETOUR_BASE"
+
+    return "NAVIGATE"
