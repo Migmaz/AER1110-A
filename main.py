@@ -31,11 +31,12 @@ from adafruit_bno08x import(
     BNO_REPORT_ROTATION_VECTOR,
 )
 
+
 # =================================================
 # Importation de fonctions
 # =================================================
 
-from FollowGap import FTG, FSM, tool
+from FollowGap import FTG, FSM, tool, sensor
 
 # =================================================
 # Initialisation des capteurs
@@ -46,6 +47,8 @@ i2c_IMU = busio.I2C(board.SCL, board.SDA, frequency=100000)
 bno = BNO08X_I2C(i2c_IMU)
 bno.enable_feature(BNO_REPORT_ACCELEROMETER)
 bno.enable_feature(BNO_REPORT_ROTATION_VECTOR)
+bno.enable_feature(BNO_REPORT_LINEAR_ACCELERATION)
+
 
 # PWM
 i2c_PWM = board.I2C()
@@ -55,4 +58,12 @@ pca.frequency = 60
 # =================================================
 # Boucle principale
 # =================================================
+while True:
+     # 1. Lire capteurs
+    a, yaw = sensor.IMU(bno)
+
+    # DEBUG
+    print(f"Acc: {a.flatten()} | Yaw: {yaw:.2f}")
+
+    time.sleep(0.01)
 
