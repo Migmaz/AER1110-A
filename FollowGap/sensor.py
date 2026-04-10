@@ -13,7 +13,7 @@ Sorties standard :
 """
 import numpy as np
 import busio
-import adafruit_bno08x
+import board
 from adafruit_bno08x.i2c import BNO08X_I2C
 from adafruit_bno08x import (
 BNO_REPORT_LINEAR_ACCELERATION,
