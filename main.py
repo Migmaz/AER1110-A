@@ -42,7 +42,7 @@ from FollowGap import FTG, FSM, tool, sensor
 # Initialisation des capteurs
 # =================================================
 
-# IMU
+
 
 
 # PWM
@@ -71,7 +71,19 @@ if choix_mode == 1 :
     bno.enable_feature(BNO_REPORT_ACCELEROMETER)
     bno.enable_feature(BNO_REPORT_ROTATION_VECTOR)
     
+    # Boucle principale
     
+    while True:
+
+        # 1. Lire capteurs
+        a, yaw = sensor.IMU(bno)
+
+        # DEBUG
+        print(f"Acc: {a.flatten()} | Yaw: {yaw:.2f}")
+
+        time.sleep(0.01)
+
+        
     
 else : 
     print("Contrôle manuel sélectionner")
