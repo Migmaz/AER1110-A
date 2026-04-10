@@ -11,10 +11,25 @@ Rôle :
 """
 
 # =================================================
-# Importation de librairy
+# Importation de librairy générale
 # =================================================
 import time
 import numpy as np
+
+
+# =================================================
+# Importation de librairy Périphérique
+# =================================================
+import board
+import busio
+from digitalio import DigitalInOut
+
+from adafruit_pca9685 import PCA9685
+from adafruit_bno08x.i2c import BNO08X_I2C
+from adafruit_bno08x import(
+    BNO_REPORT_ACCELEROMETER,
+    BNO_REPORT_ROTATION_VECTOR,
+)
 
 # =================================================
 # Importation de fonctions
@@ -23,5 +38,21 @@ import numpy as np
 from FollowGap import FTG, FSM, tool
 
 # =================================================
-# Code
+# Initialisation des capteurs
 # =================================================
+
+# IMU
+i2c_IMU = busio.I2C(board.SCL, board.SDA, frequency=100000)
+bno = BNO08X_I2C(i2c_IMU)
+bno.enable_feature(BNO_REPORT_ACCELEROMETER)
+bno.enable_feature(BNO_REPORT_ROTATION_VECTOR)
+
+# PWM
+i2c_PWM = board.I2C()
+pca = PCA9685(i2c_PWM)
+pca.frequency = 60
+
+# =================================================
+# Boucle principale
+# =================================================
+
