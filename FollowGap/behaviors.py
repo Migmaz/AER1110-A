@@ -69,9 +69,9 @@ def escape(scan):
     }
  
  
-def scan_behavior(scan, desired_distance=1.0):
-    distances = scan[:, 0]
-    angles = scan[:, 1]
+def scan_behavior(scan_eff, desired_distance=1.0):
+    distances = scan_eff[:, 0]
+    angles = scan_eff[:, 1]
  
     idx = np.argmin(distances)
     min_dist = distances[idx]
