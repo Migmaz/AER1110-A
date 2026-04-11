@@ -36,7 +36,7 @@ from adafruit_bno08x import(
 # Importation de fonctions
 # =================================================
 
-from FollowGap import FTG, FSM, tool, sensor
+from FollowGap import FTG, FSM, tool, sensor, behaviors, mapping
 
 # =================================================
 # Initialisation des capteurs
@@ -59,8 +59,8 @@ print(" 1 - Mode autonome : Follow the gap")
 print(" 2 - Mode manuel : Clavier AWSD")
 choix_mode = input("Entrer le choix du mode : ")
 
-if choix_mode == 1 :
-    print("Contrôle autonome sélectionner")
+if choix_mode == "1" :
+    print("Contrôle autonome sélectionné")
     # =================================================
     # Boucle contrôle autonome
     # =================================================
@@ -70,20 +70,64 @@ if choix_mode == 1 :
     bno = BNO08X_I2C(i2c_IMU)
     bno.enable_feature(BNO_REPORT_ACCELEROMETER)
     bno.enable_feature(BNO_REPORT_ROTATION_VECTOR)
+
     
     # Boucle principale
-    
+
+    state = FSM.RobotState()
+
     while True:
 
-        # 1. Lire capteurs
+        # 1. Capteurs
         a, yaw = sensor.IMU(bno)
 
-        # DEBUG
-        print(f"Acc: {a.flatten()} | Yaw: {yaw:.2f}")
+        # 2. Objectif
+        Position_rover = mapping.update_position(x, y, yaw, a * 0.01, 0.01) #Linear_speed = acceleration * temps (dt)
+        theta_goal = tool.theta_goal(Position_rover, Pg, yaw)
+
+        # 3. Lidar
+        scan_clean = tool.preprocess_lidar(scan)
+        pts = tool.trans_to_rover(scan_clean, pitch, translation)
+        pts = tool.filter_ground(pts)
+        scan_eff, scan_true = tool.compute_scan(pts)
+
+        # FSM → scan réel
+        behavior = FSM.update_state(
+            scan_eff, theta_goal, Position_rover, Pg, state
+        )
+
+
+        # 5. Behavior
+        if behavior == "NAVIGATE":
+            cmd = behaviors.navigate(theta_goal)
+
+        elif behavior == "SCAN":
+            cmd = behaviors.scan_behavior(scan_eff)
+
+        elif behavior == "RETOUR_BASE":
+ 
+            theta_retour = tool.theta_goal(Position_rover, (0,0), yaw) # La position de départ est ici initialisée à (0, 0), mais peut être ajustée si nécessaire.
+            cmd = behaviors.retour_base(theta_retour)
+
+        elif behavior == "STOP":
+            cmd = behaviors.stop()
+
+        elif behavior in ["ESCAPE", "CUL-DE-SAC"]:
+            cmd = behaviors.escape(scan_eff)
+        
+        else:
+            cmd = {"linear": 0.0, "angular": 0.0}
+
+
+        # 6. ACTION (CRUCIAL)
+        tool.apply_command(pca, cmd)
 
         time.sleep(0.01)
-
         
+
+
+
+    
     
 else : 
     print("Contrôle manuel sélectionner")
